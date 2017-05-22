@@ -11,8 +11,6 @@ from config import *
 
 # Copy the data to this dir here in the SegNet project /CamVid from here:
 # https://github.com/alexgkendall/SegNet-Tutorial
-DATA_PATH = './CamVid/'
-DATASET_FILE = 'dataset.h5'
 data_shape = 360*480
 
 
