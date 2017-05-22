@@ -7,6 +7,7 @@ import itertools
 
 from helper import *
 import os
+from config import *
 
 # Copy the data to this dir here in the SegNet project /CamVid from here:
 # https://github.com/alexgkendall/SegNet-Tutorial
