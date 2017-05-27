@@ -72,7 +72,7 @@ def create_model():
     model.add(Convolution2D(CATEGORIES, kernel_size=(1,1), padding='valid'))
     # model.add(Reshape((12,360*480), input_shape=(12,360,480)))
     model.add(Reshape((CATEGORIES, IMAGE_DATA_SHAPE[0]*IMAGE_DATA_SHAPE[1]), input_shape=(CATEGORIES, IMAGE_DATA_SHAPE[0], IMAGE_DATA_SHAPE[1])))
-    model.add(Permute((2,1), input_shape=(12,360*480)))
+    model.add(Permute((2,1))) #, input_shape=(12,360*480)))
     model.add(Activation('softmax'))
 
     model.summary()
@@ -100,7 +100,7 @@ def train_model():
     callbacks = [model_checkpoint, csv_log]
 
     print('Compling Model')
-    segnet_basic_model.compile(optimizer='adadelta', loss='categorical_crossentropy', metrics=['accuracy', 'mae'])
+    segnet_basic_model.compile(optimizer='adadelta', loss='categorical_crossentropy', metrics=['accuracy'])
     print('Training Model')
     history = segnet_basic_model.fit(train_data, 
                                     train_label, 
@@ -108,15 +108,15 @@ def train_model():
                                     batch_size=BATCH_SIZE, 
                                     epochs=NUM_EPOCH, 
                                     verbose=1,
-                                    class_weight= CLASS_WEIGHTING,
+                                    # class_weight= CLASS_WEIGHTING,
                                     validation_data=(val_data, val_label), #val split=1/3
                                     shuffle=True)
 
 
 if __name__ == '__main__':
     parse_and_set_arguments()
-    # create_model()
-    train_model()
+    create_model()
+    #train_model()
 
 
 
