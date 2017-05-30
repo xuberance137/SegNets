@@ -33,40 +33,40 @@ def create_model():
     model.add(MaxPooling2D(pool_size=POOL_SIZE, padding='valid'))
 
     model.add(ZeroPadding2D(padding=PAD_SIZE))
-    model.add(Convolution2D(2*FILTER_SIZE, kernel_size= KERNEL_SIZE, padding='valid'))
+    model.add(Convolution2D(2*FILTER_SIZE, kernel_size=KERNEL_SIZE, padding='valid'))
     model.add(BatchNormalization())
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=POOL_SIZE))
 
     model.add(ZeroPadding2D(padding=PAD_SIZE))
-    model.add(Convolution2D(4*FILTER_SIZE, kernel_size= KERNEL_SIZE, padding='valid'))
+    model.add(Convolution2D(4*FILTER_SIZE, kernel_size=KERNEL_SIZE, padding='valid'))
     model.add(BatchNormalization())
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=POOL_SIZE))
 
     model.add(ZeroPadding2D(padding=PAD_SIZE))
-    model.add(Convolution2D(8*FILTER_SIZE, kernel_size= KERNEL_SIZE, padding='valid'))
+    model.add(Convolution2D(8*FILTER_SIZE, kernel_size=KERNEL_SIZE, padding='valid'))
     model.add(BatchNormalization())
     model.add(Activation('relu'))
 
     # decoding layers
     model.add(ZeroPadding2D(padding=PAD_SIZE))
-    model.add(Convolution2D(8*FILTER_SIZE, kernel_size= KERNEL_SIZE, padding='valid'))
+    model.add(Convolution2D(8*FILTER_SIZE, kernel_size=KERNEL_SIZE, padding='valid'))
     model.add(BatchNormalization())
 
     model.add(UpSampling2D(size=POOL_SIZE))
     model.add(ZeroPadding2D(padding=PAD_SIZE))
-    model.add(Convolution2D(4*FILTER_SIZE, kernel_size= KERNEL_SIZE, padding='valid'))
+    model.add(Convolution2D(4*FILTER_SIZE, kernel_size=KERNEL_SIZE, padding='valid'))
     model.add(BatchNormalization())
 
     model.add(UpSampling2D(size=POOL_SIZE))
     model.add(ZeroPadding2D(padding=PAD_SIZE))
-    model.add(Convolution2D(2*FILTER_SIZE, kernel_size= KERNEL_SIZE, padding='valid'))
+    model.add(Convolution2D(2*FILTER_SIZE, kernel_size=KERNEL_SIZE, padding='valid'))
     model.add(BatchNormalization())
 
     model.add(UpSampling2D(size=POOL_SIZE))
     model.add(ZeroPadding2D(padding=PAD_SIZE))
-    model.add(Convolution2D(FILTER_SIZE, kernel_size= KERNEL_SIZE, padding='valid'))
+    model.add(Convolution2D(FILTER_SIZE, kernel_size=KERNEL_SIZE, padding='valid'))
     model.add(BatchNormalization())
 
     model.add(Convolution2D(CATEGORIES, kernel_size=(1,1), padding='valid'))
@@ -108,15 +108,15 @@ def train_model():
                                     batch_size=BATCH_SIZE, 
                                     epochs=NUM_EPOCH, 
                                     verbose=1,
-                                    # class_weight= CLASS_WEIGHTING,
+                                    class_weight= CLASS_WEIGHTING,
                                     validation_data=(val_data, val_label), #val split=1/3
                                     shuffle=True)
 
 
 if __name__ == '__main__':
     parse_and_set_arguments()
-    create_model()
-    #train_model()
+    #create_model()
+    train_model()
 
 
 
