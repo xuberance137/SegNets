@@ -30,7 +30,9 @@ http://www.image-net.org/
 ## Coming Soon
 
 U-net Models
+
 Faster RCNNs/Region Proposal Networks
+
 Docker container and script for quick evaluation of reference models
 
 ## License
