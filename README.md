@@ -1,5 +1,5 @@
 # SegNets
-This is the holding place for a few experiments with differnt deep learning models for Image segmentation in Keras/Tensorflow. The goal is an up-to-date assessment of performance trade-offs when using different architectures on different platforms (cloud/server/embedded).
+This is the holding place for experiments with differnt deep learning models for Image segmentation in Keras/Tensorflow. The goal is to create an up-to-date assessment of performance trade-offs when using different state of the art architectures on different platforms (cloud/server/embedded).
 
 ## Segnet
 
