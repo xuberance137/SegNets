@@ -1,3 +1,19 @@
+# from __future__ import absolute_import
+# from __future__ import print_function
+
+from keras.models import Sequential, model_from_json
+from keras.layers.core import Layer, Dense, Dropout, Activation, Flatten, Reshape, Permute
+from keras.layers.convolutional import Convolution2D, MaxPooling2D, UpSampling2D, ZeroPadding2D
+from keras.layers.normalization import BatchNormalization
+from keras.callbacks import ModelCheckpoint, CSVLogger
+from keras import backend as K
+
+import numpy as np
+import json
+import h5py
+import argparse
+from config import *
+
 import warnings
 
 from keras.models import Model
@@ -19,74 +35,14 @@ import json
 import cv2
 import numpy as np
 
-# WEIGHTS_PATH = 'https://github.com/fchollet/deep-learning-models/releases/download/v0.1/vgg16_weights_tf_dim_ordering_tf_kernels.h5'
-# WEIGHTS_PATH_NO_TOP = 'https://github.com/fchollet/deep-learning-models/releases/download/v0.1/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5'
+np.random.seed(007) # starting seed for reproducibility
 
-# CLASS_INDEX = None
-# CLASS_INDEX_PATH = 'https://s3.amazonaws.com/deep-learning-models/image-models/imagenet_class_index.json'
-
-
-def preprocess_input(x, data_format=None):
-    """Preprocesses a tensor encoding a batch of images.
-    # Arguments
-        x: input Numpy tensor, 4D.
-        data_format: data format of the image tensor.
-    # Returns
-        Preprocessed tensor.
-    """
-    if data_format is None:
-        data_format = K.image_data_format()
-    assert data_format in {'channels_last', 'channels_first'}
-
-    if data_format == 'channels_first':
-        # 'RGB'->'BGR'
-        x = x[:, ::-1, :, :]
-        # Zero-center by mean pixel
-        x[:, 0, :, :] -= 103.939
-        x[:, 1, :, :] -= 116.779
-        x[:, 2, :, :] -= 123.68
-    else:
-        # 'RGB'->'BGR'
-        x = x[:, :, :, ::-1]
-        # Zero-center by mean pixel
-        x[:, :, :, 0] -= 103.939
-        x[:, :, :, 1] -= 116.779
-        x[:, :, :, 2] -= 123.68
-    return x
-
-
-def decode_predictions(preds, top=5):
-    """Decodes the prediction of an ImageNet model.
-    # Arguments
-        preds: Numpy tensor encoding a batch of predictions.
-        top: integer, how many top-guesses to return.
-    # Returns
-        A list of lists of top class prediction tuples
-        `(class_name, class_description, score)`.
-        One list of tuples per sample in batch input.
-    # Raises
-        ValueError: in case of invalid shape of the `pred` array
-            (must be 2D).
-    """
-    global CLASS_INDEX
-    if len(preds.shape) != 2 or preds.shape[1] != 1000:
-        raise ValueError('`decode_predictions` expects '
-                         'a batch of predictions '
-                         '(i.e. a 2D array of shape (samples, 1000)). '
-                         'Found array with shape: ' + str(preds.shape))
-    if CLASS_INDEX is None:
-        fpath = get_file('imagenet_class_index.json',
-                         CLASS_INDEX_PATH,
-                         cache_subdir='models')
-        CLASS_INDEX = json.load(open(fpath))
-    results = []
-    for pred in preds:
-        top_indices = pred.argsort()[-top:][::-1]
-        result = [tuple(CLASS_INDEX[str(i)]) + (pred[i],) for i in top_indices]
-        result.sort(key=lambda x: x[2], reverse=True)
-        results.append(result)
-    return results
-
+def parse_and_set_arguments():
+    global TRAINING
+    parser = argparse.ArgumentParser(description='Basic Segnet Model Training and Test App')
+    parser.add_argument('--train', type=int, action='store', dest='TRAINING', default=1, help='Run Segnet in train or test mode(default is test)')
+    args = parser.parse_args()
+    TRAINING = args.TRAINING
 
 def _obtain_input_shape(input_shape,
                         default_size,
@@ -148,9 +104,7 @@ def _obtain_input_shape(input_shape,
                 input_shape = (None, None, 3)
     return input_shape
 
-
-
-def VGG16(include_top=True, weights='imagenet',
+def create_model(include_top=False, weights='imagenet',
           input_tensor=None, input_shape=None,
           pooling=None,
           classes=1000):
@@ -221,44 +175,52 @@ def VGG16(include_top=True, weights='imagenet',
         else:
             img_input = input_tensor
     # Block 1
-    x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv1')(img_input)
-    x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv2')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), name='block1_pool')(x)
+    x = Conv2D(64, (3, 3), padding='same', name='block1_conv1')(img_input)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=POOL_SIZE, padding='valid')(x)
+    
+    x = ZeroPadding2D(padding=PAD_SIZE)(x)
+    x = Conv2D(128, (3, 3), padding='valid', name='block1_conv2')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=POOL_SIZE, padding='valid')(x)
 
-    # Block 2
-    x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv1')(x)
-    x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv2')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), name='block2_pool')(x)
+    x = ZeroPadding2D(padding=PAD_SIZE)(x)
+    x = Conv2D(256, (3, 3), padding='valid', name='block1_conv3')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=POOL_SIZE, padding='valid')(x)
 
-    # Block 3
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv1')(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv2')(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(x)
+    x = ZeroPadding2D(padding=PAD_SIZE)(x)
+    x = Conv2D(512, (3, 3), padding='valid', name='block1_conv4')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    #x = MaxPooling2D(pool_size=POOL_SIZE, padding='valid')(x)
 
-    # Block 4
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv1')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv2')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv3')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool')(x)
+    x = ZeroPadding2D(padding=PAD_SIZE)(x)
+    x = Conv2D(512, (3, 3), padding='valid', name='block1_conv5')(x)
+    x = BatchNormalization()(x)
 
-    # Block 5
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv1')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv2')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv3')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(x)
+    x = UpSampling2D(size=POOL_SIZE)(x)
+    x = ZeroPadding2D(padding=PAD_SIZE)(x)
+    x = Conv2D(256, (3, 3), padding='valid', name='block1_conv6')(x)
+    x = BatchNormalization()(x)
 
-    if include_top:
-        # Classification block
-        x = Flatten(name='flatten')(x)
-        x = Dense(4096, activation='relu', name='fc1')(x)
-        x = Dense(4096, activation='relu', name='fc2')(x)
-        x = Dense(classes, activation='softmax', name='predictions')(x)
-    else:
-        if pooling == 'avg':
-            x = GlobalAveragePooling2D()(x)
-        elif pooling == 'max':
-            x = GlobalMaxPooling2D()(x)
+    x = UpSampling2D(size=POOL_SIZE)(x)
+    x = ZeroPadding2D(padding=PAD_SIZE)(x)
+    x = Conv2D(128, (3, 3), padding='valid', name='block1_conv7')(x)
+    x = BatchNormalization()(x)
+
+    x = UpSampling2D(size=POOL_SIZE)(x)
+    x = ZeroPadding2D(padding=PAD_SIZE)(x)
+    x = Conv2D(64, (3, 3), padding='valid', name='block1_conv8')(x)
+    x = BatchNormalization()(x)
+
+    x = Conv2D(CATEGORIES, kernel_size=(1,1), padding='valid', name='block1_conv9')(x)
+    x = Reshape((CATEGORIES, IMAGE_DATA_SHAPE[0]*IMAGE_DATA_SHAPE[1]), input_shape=(CATEGORIES, IMAGE_DATA_SHAPE[0], IMAGE_DATA_SHAPE[1]))(x)
+    x = Permute((2,1))(x)
+    x = Activation('softmax')(x)
 
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
@@ -267,7 +229,7 @@ def VGG16(include_top=True, weights='imagenet',
     else:
         inputs = img_input
     # Create model.
-    model = Model(inputs, x, name='vgg16')
+    model = Model(inputs, x, name='segnet_basic_functional')
 
     # load weights
     if weights == 'imagenet':
@@ -306,48 +268,75 @@ def VGG16(include_top=True, weights='imagenet',
                               'at ~/.keras/keras.json.')
     return model
 
+def train_model(segnet_basic_model):
+    # load model architecture
+    # with open(MODEL_PATH+'basic_model.json', 'r') as model_file:
+    #     segnet_basic_model = model_from_json(model_file.read())
+
+    # load training and test data
+    with h5py.File(DATA_PATH+DATASET_FILE, 'r') as hf:
+        train_data = hf['train_data'][:]
+        train_label = hf['train_label'][:]
+        test_data = hf['test_data'][:]
+        test_label = hf['test_label'][:]
+        val_data = hf['val_data'][:]
+        val_label = hf['val_label'][:]
+
+    # defining checkpoints
+    model_checkpoint = ModelCheckpoint(MODEL_PATH+'basic_model_{epoch:03d}.hdf5')
+    csv_log = CSVLogger(MODEL_PATH+'basic_model_training_log.csv', separator=',', append=False)
+    callbacks = [model_checkpoint, csv_log]
+
+    print('Compling Model')
+    segnet_basic_model.compile(optimizer='adadelta', loss='categorical_crossentropy', metrics=['accuracy'])
+    print('Training Model')
+    history = segnet_basic_model.fit(train_data, 
+                                    train_label, 
+                                    callbacks=callbacks, 
+                                    batch_size=BATCH_SIZE, 
+                                    epochs=NUM_EPOCH, 
+                                    verbose=1,
+                                    class_weight= CLASS_WEIGHTING,
+                                    validation_data=(val_data, val_label), #val split=1/3
+                                    shuffle=True)
+
 
 if __name__ == '__main__':
-    model_vgg16_conv = VGG16(weights='imagenet', include_top=True)
-    # model_vgg16_conv.summary()
-    #input = Input(shape=(3,224,224),name = 'image_input')
+    parse_and_set_arguments()
+    #create_model()
+    segnet_basic_model = create_model(input_shape=IMAGE_DATA_SHAPE, weights=None)
+    segnet_basic_model.summary()
+    #train_model(segnet_basic_model)
 
-    # #Create your own input format (here 3x200x200)
-    # input = Input(shape=(3,200,200),name = 'image_input')
+    with h5py.File(DATA_PATH+DATASET_FILE, 'r') as hf:
+        train_data = hf['train_data'][:]
+        train_label = hf['train_label'][:]
+        test_data = hf['test_data'][:]
+        test_label = hf['test_label'][:]
+        val_data = hf['val_data'][:]
+        val_label = hf['val_label'][:]
 
-    # #Use the generated model 
-    # output_vgg16_conv = model_vgg16_conv(input)
+    train_dataT = train_data.transpose(0,2,3,1)
+    val_dataT = val_data.transpose(0,2,3,1)    
+    test_dataT = test_data.transpose(0,2,3,1)
 
-    # #Add the fully-connected layers 
-    # x = Flatten(name='flatten')(output_vgg16_conv)
-    # x = Dense(4096, activation='relu', name='fc1')(x)
-    # x = Dense(4096, activation='relu', name='fc2')(x)
-    # x = Dense(8, activation='softmax', name='predictions')(x)
+    # defining checkpoints
+    model_checkpoint = ModelCheckpoint(MODEL_PATH+'basic_model_{epoch:03d}.hdf5')
+    csv_log = CSVLogger(MODEL_PATH+'basic_model_training_log.csv', separator=',', append=False)
+    callbacks = [model_checkpoint, csv_log]
 
-    im = cv2.resize(cv2.imread('../data/laska.png'), (224, 224)).astype(np.float32)
-    im[:,:,0] -= 103.939
-    im[:,:,1] -= 116.779
-    im[:,:,2] -= 123.68
-    #im = im.transpose((2,0,1))
-    im = np.expand_dims(im, axis=0)
-    # print im.shape
-
-    # Test pretrained model
-    sgd = SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
-    model_vgg16_conv.compile(optimizer=sgd, loss='categorical_crossentropy')
-
-    out = model_vgg16_conv.predict(im)
-    top_class = np.argmax(out)
-
-    f = open('../data/imagenet_class_index.json', 'r')
-    d = json.load(f)
-
-    print
-    TOPK=10
-    top_predictions = [d[str(y)][1] for y in out[0].argsort()[::-1][:TOPK]]
-    for index, pred in enumerate(top_predictions):
-        print index, pred
-
+    print('Compling Model')
+    segnet_basic_model.compile(optimizer='adadelta', loss='categorical_crossentropy', metrics=['accuracy'])
+    print('Training Model')
+    history = segnet_basic_model.fit(train_dataT, 
+                                    train_label, 
+                                    callbacks=callbacks, 
+                                    batch_size=BATCH_SIZE, 
+                                    epochs=NUM_EPOCH, 
+                                    verbose=1,
+                                    class_weight= CLASS_WEIGHTING,
+                                    validation_data=(val_dataT, val_label), #val split=1/3
+                                    shuffle=True)
 
 
 
