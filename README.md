@@ -35,7 +35,9 @@ http://www.image-net.org/
 ## Docker Containerized Workflow
 
 INSTALL docker
+
 BUILD container: $docker build -t segnet-keras .
+
 RUN container: $docker run -it -v local_root_folder:/app segnet-keras /bin/bash
 
 ## Coming Soon
