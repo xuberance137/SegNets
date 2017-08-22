@@ -15,6 +15,11 @@ Training Data:
 CamVid dataset at:
 https://github.com/alexgkendall/SegNet-Tutorial
 
+## U-Net
+
+U-net Models
+https://arxiv.org/abs/1505.04597
+
 ## VGG-16
 
 This is a reference implementation of the VGG-16 architecture in Keras adapted from the one placed in the Keras repo.
@@ -27,9 +32,13 @@ Training Data:
 ImageNet:
 http://www.image-net.org/
 
-## Coming Soon
+## Docker Containerized Workflow
 
-U-net Models
+INSTALL docker
+BUILD container: $docker build -t segnet-keras .
+RUN container: $docker run -it -v local_root_folder:/app segnet-keras /bin/bash
+
+## Coming Soon
 
 Faster RCNNs/Region Proposal Networks
 
